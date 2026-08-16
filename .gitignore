@@ -1,0 +1,46 @@
+# Rust build output
+target/
+contracts/**/target/
+
+# Generated Soroban test snapshots
+test_snapshots/
+contracts/**/test_snapshots/
+
+# Node / frontend
+node_modules/
+dist/
+.vite/
+frontend/node_modules/
+frontend/dist/
+frontend/.vite/
+
+# Stellar local identities/config
+.stellar/
+
+# Environment/local overrides
+.env
+.env.*
+frontend/.env
+frontend/.env.*
+
+# Transaction/signing/temp artifacts
+*.xdr
+*.log
+*.tmp
+*.temp
+*.bak
+*.backup
+deploy-output.txt
+deploy-stdout.tmp
+deploy-stderr.tmp
+
+# Local deployment/e2e leftovers
+TESTNET_CONTRACT_ID.txt
+TESTNET_E2E_REPORT.txt
+MAINNET_CONTRACT_ID.txt
+
+# Editor / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db

@@ -1,0 +1,13 @@
+{
+  "project": "Battery Passport",
+  "network": "mainnet",
+  "contractId": "CB2SENPKHCYERH3WF3ILL7Q3RGFPDBYOC4WC4WSMNZUOU6KTXOX5PVQ5",
+  "wasmSha256": "0e7f3ce1012e76b877ef021c2d8de5aef0303a509aa3138dfab4f8ae60347663",
+  "rpcUrl": "https://soroban-rpc.mainnet.stellar.gateway.fm",
+  "networkPassphrase": "Public Global Stellar Network ; September 2015",
+  "readAccount": "GANXWLW37X7D6FHGHPOQZGYQRF5G5EYAALQX4R6FNS2XT3B4UPTYL63L",
+  "wasmPath": "target/wasm32v1-none/release/battery_passport.wasm",
+  "deploymentTransaction": null,
+  "admin": null,
+  "notes": "Contract ID, deployed WASM hash and interface were verified directly against Stellar Mainnet. Deployment transaction and current admin are intentionally not fabricated."
+}
