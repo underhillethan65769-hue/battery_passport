@@ -12,6 +12,89 @@ permissions:
 jobs:
   contract:
     name: Smart Contract
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.96.0
+          components: rustfmt
+          target: wasm32v1-none
+
+      - uses: stellar/stellar-cli@v27.0.0
+
+      - name: Build environment
+        shell: pwsh
+        run: |
+          rustc --version
+          cargo --version
+          stellar --version
+
+      - name: Rust format
+        shell: pwsh
+        run: cargo fmt --all -- --check
+
+      - name: Contract tests
+        shell: pwsh
+        run: cargo test --workspace
+
+      - name: Build production WASM
+        shell: pwsh
+        run: |
+          Remove-Item Env:RUSTFLAGS -ErrorAction SilentlyContinue
+          stellar contract build --locked
+
+      - name: Verify local WASM hash
+        shell: pwsh
+        run: |
+          $expected = "0e7f3ce1012e76b877ef021c2d8de5aef0303a509aa3138dfab4f8ae60347663"
+
+          $actual = (
+            Get-FileHash `
+              ".\target\wasm32v1-none\release\battery_passport.wasm" `
+              -Algorithm SHA256
+          ).Hash.ToLowerInvariant()
+
+          Write-Host "Local WASM: $actual"
+
+          if ($actual -ne $expected) {
+            throw "Local WASM mismatch. Expected $expected but got $actual"
+          }
+
+      - name: Verify deployed Mainnet WASM hash
+        shell: pwsh
+        run: |
+          $expected = "0e7f3ce1012e76b877ef021c2d8de5aef0303a509aa3138dfab4f8ae60347663"
+
+          $output = @(
+            stellar contract info hash `
+              --contract-id "CB2SENPKHCYERH3WF3ILL7Q3RGFPDBYOC4WC4WSMNZUOU6KTXOX5PVQ5" `
+              --rpc-url "https://soroban-rpc.mainnet.stellar.gateway.fm" `
+              --network-passphrase "Public Global Stellar Network ; September 2015"
+          )
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Unable to read Mainnet contract hash."
+          }
+
+          $actual = (
+            $output |
+            Where-Object { name: Battery Passport CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  contract:
+    name: Smart Contract
     runs-on: ubuntu-latest
 
     steps:
@@ -59,6 +142,184 @@ jobs:
             --network-passphrase "Public Global Stellar Network ; September 2015" | tail -n 1 | tr -d '\r')
           echo "Mainnet WASM: $actual"
           test "$actual" = "0e7f3ce1012e76b877ef021c2d8de5aef0303a509aa3138dfab4f8ae60347663"
+
+  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Production build
+        run: npm run build
+
+  release-hygiene:
+    name: Mainnet Release Hygiene
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check production identifiers
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          grep -q "CB2SENPKHCYERH3WF3ILL7Q3RGFPDBYOC4WC4WSMNZUOU6KTXOX5PVQ5" frontend/src/contractConfig.ts
+          grep -q "0e7f3ce1012e76b877ef021c2d8de5aef0303a509aa3138dfab4f8ae60347663" deployments/mainnet.json
+          grep -q "https://soroban-rpc.mainnet.stellar.gateway.fm" frontend/src/contractConfig.ts
+          grep -q "Public Global Stellar Network ; September 2015" frontend/src/contractConfig.ts
+          grep -q "GANXWLW37X7D6FHGHPOQZGYQRF5G5EYAALQX4R6FNS2XT3B4UPTYL63L" frontend/src/contractConfig.ts
+
+      - name: Reject stale pre-Mainnet files and configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test ! -f frontend/.env.example
+          test ! -f scripts/deploy-mainnet.ps1
+          test ! -f scripts/deploy-testnet.ps1
+          test ! -f scripts/testnet-e2e.ps1
+          test ! -f .github/workflows/testnet-e2e.yml
+          test ! -f docs/TESTNET_REGRESSION.md
+
+          if grep -RniE \
+            "soroban-testnet|Test SDF Network|VITE_STELLAR_NETWORK=TESTNET|Testnet regression|Testnet E2E|structured for a fresh Mainnet deployment|Mainnet is blocked" \
+            README.md CONTRIBUTING.md docs frontend scripts deployments \
+            --exclude='package-lock.json' \
+            --exclude='verify-release.ps1'; then
+            echo "Stale pre-Mainnet content detected." >&2
+            exit 1
+          fi
+
+      - name: Reject secrets/generated artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git ls-files | grep -Ei \
+            '(^|/)\.env($|\.)|\.xdr$|\.log$|(^|/)target/|(^|/)node_modules/|(^|/)dist/|(^|/)test_snapshots/'; then
+            echo "Forbidden tracked artifact detected." >&2
+            exit 1
+          fi
+
+          if grep -RniE 'S[A-Z2-7]{55}' . \
+            --exclude-dir=.git \
+            --exclude-dir=node_modules \
+            --exclude-dir=target \
+            --exclude='package-lock.json' \
+            --exclude='verify-release.ps1'; then
+            echo "Stellar secret-like value detected." >&2
+            exit 1
+          fi -match '^[0-9a-fA-F]{64}  frontend:
+    name: Frontend
+    runs-on: ubuntu-latest
+
+    defaults:
+      run:
+        working-directory: frontend
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+          cache: npm
+          cache-dependency-path: frontend/package-lock.json
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Type-check
+        run: npm run type-check
+
+      - name: Production build
+        run: npm run build
+
+  release-hygiene:
+    name: Mainnet Release Hygiene
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Check production identifiers
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          grep -q "CB2SENPKHCYERH3WF3ILL7Q3RGFPDBYOC4WC4WSMNZUOU6KTXOX5PVQ5" frontend/src/contractConfig.ts
+          grep -q "0e7f3ce1012e76b877ef021c2d8de5aef0303a509aa3138dfab4f8ae60347663" deployments/mainnet.json
+          grep -q "https://soroban-rpc.mainnet.stellar.gateway.fm" frontend/src/contractConfig.ts
+          grep -q "Public Global Stellar Network ; September 2015" frontend/src/contractConfig.ts
+          grep -q "GANXWLW37X7D6FHGHPOQZGYQRF5G5EYAALQX4R6FNS2XT3B4UPTYL63L" frontend/src/contractConfig.ts
+
+      - name: Reject stale pre-Mainnet files and configuration
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          test ! -f frontend/.env.example
+          test ! -f scripts/deploy-mainnet.ps1
+          test ! -f scripts/deploy-testnet.ps1
+          test ! -f scripts/testnet-e2e.ps1
+          test ! -f .github/workflows/testnet-e2e.yml
+          test ! -f docs/TESTNET_REGRESSION.md
+
+          if grep -RniE \
+            "soroban-testnet|Test SDF Network|VITE_STELLAR_NETWORK=TESTNET|Testnet regression|Testnet E2E|structured for a fresh Mainnet deployment|Mainnet is blocked" \
+            README.md CONTRIBUTING.md docs frontend scripts deployments \
+            --exclude='package-lock.json' \
+            --exclude='verify-release.ps1'; then
+            echo "Stale pre-Mainnet content detected." >&2
+            exit 1
+          fi
+
+      - name: Reject secrets/generated artifacts
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          if git ls-files | grep -Ei \
+            '(^|/)\.env($|\.)|\.xdr$|\.log$|(^|/)target/|(^|/)node_modules/|(^|/)dist/|(^|/)test_snapshots/'; then
+            echo "Forbidden tracked artifact detected." >&2
+            exit 1
+          fi
+
+          if grep -RniE 'S[A-Z2-7]{55}' . \
+            --exclude-dir=.git \
+            --exclude-dir=node_modules \
+            --exclude-dir=target \
+            --exclude='package-lock.json' \
+            --exclude='verify-release.ps1'; then
+            echo "Stellar secret-like value detected." >&2
+            exit 1
+          fi } |
+            Select-Object -Last 1
+          ).Trim().ToLowerInvariant()
+
+          Write-Host "Mainnet WASM: $actual"
+
+          if ($actual -ne $expected) {
+            throw "Mainnet WASM mismatch. Expected $expected but got $actual"
+          }
 
   frontend:
     name: Frontend
