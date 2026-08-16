@@ -30,7 +30,14 @@ jobs:
         run: |
           rustc --version
           cargo --version
-          stellar --version
+
+          $stellar = Join-Path $HOME ".local\bin\stellar.exe"
+
+          if (-not (Test-Path $stellar)) {
+            throw "Stellar CLI not found at $stellar"
+          }
+
+          & $stellar --version
 
       - name: Rust format
         shell: pwsh
@@ -44,7 +51,13 @@ jobs:
         shell: pwsh
         run: |
           Remove-Item Env:RUSTFLAGS -ErrorAction SilentlyContinue
-          stellar contract build --locked
+
+          $stellar = Join-Path $HOME ".local\bin\stellar.exe"
+          & $stellar contract build --locked
+
+          if ($LASTEXITCODE -ne 0) {
+            throw "Stellar contract build failed."
+          }
 
       - name: Verify local WASM hash
         shell: pwsh
@@ -68,8 +81,10 @@ jobs:
         run: |
           $expected = "0e7f3ce1012e76b877ef021c2d8de5aef0303a509aa3138dfab4f8ae60347663"
 
+          $stellar = Join-Path $HOME ".local\bin\stellar.exe"
+
           $output = @(
-            stellar contract info hash `
+            & $stellar contract info hash `
               --contract-id "CB2SENPKHCYERH3WF3ILL7Q3RGFPDBYOC4WC4WSMNZUOU6KTXOX5PVQ5" `
               --rpc-url "https://soroban-rpc.mainnet.stellar.gateway.fm" `
               --network-passphrase "Public Global Stellar Network ; September 2015"
