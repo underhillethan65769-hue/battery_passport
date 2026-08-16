@@ -23,7 +23,7 @@ jobs:
           components: rustfmt
           target: wasm32v1-none
 
-      - uses: stellar/stellar-cli@v27.1.0
+      - uses: stellar/stellar-cli@v27.0.0
 
       - name: Rust format
         run: cargo fmt --all -- --check
@@ -32,7 +32,7 @@ jobs:
         run: cargo test --workspace
 
       - name: Build production WASM
-        run: stellar contract build --locked
+        run: env -u RUSTFLAGS stellar contract build --locked
 
       - name: Verify local WASM hash
         shell: bash

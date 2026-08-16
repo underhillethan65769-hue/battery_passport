@@ -1,38 +1,43 @@
 # Quality and Release Gate
 
-Battery Passport is a deployed Mainnet product. A repository release must continue to match the verified production contract.
+Battery Passport is a deployed Stellar Mainnet product.
 
 ## Contract gate
 
-- Rust formatting passes.
-- All contract tests pass.
-- stellar contract build --locked succeeds.
-- Local WASM SHA-256 equals $ExpectedWasmHash.
-- The deployed Mainnet contract reports the same WASM hash.
-- Required production interface functions remain present.
+Rust formatting must pass.
+
+All contract tests must pass.
+
+The locked production WASM build must succeed.
+
+The local WASM must match the verified Mainnet release.
+
+The deployed Mainnet contract must expose the required lifecycle interface.
 
 ## Frontend gate
 
-- 
-pm ci succeeds from the committed lock file.
-- TypeScript type-check passes.
-- production build passes.
-- Mainnet contract ID, RPC and network passphrase are pinned correctly.
-- public reads do not request signatures.
-- state-changing actions use Freighter and wait for final transaction status.
+npm ci must succeed from the committed lock file.
+
+TypeScript type-check must pass.
+
+Production build must pass.
+
+Mainnet Contract ID, RPC and network passphrase must be correct.
+
+Public reads must not request signatures.
+
+State-changing actions must use Freighter.
 
 ## Security gate
 
-- no secret key, recovery phrase or signing XDR is tracked;
-- no stale Testnet deployment workflow remains in the production repository;
-- generated 	arget, 
-ode_modules, dist and test snapshot files are not tracked;
-- role, ownership, verification, recall and recycling rules remain covered by contract tests.
+No secret key, recovery phrase or signing XDR may be tracked.
+
+Generated target, node_modules, dist and test snapshot artifacts must not be tracked.
+
+No stale Testnet deployment workflow should remain.
 
 ## Release command
 
-`powershell
-powershell -ExecutionPolicy Bypass -File .\scripts\verify-release.ps1
-`
+    powershell -ExecutionPolicy Bypass -File .\scripts\verify-release.ps1
 
-Push only after the verifier passes.
+Push only after the release verifier passes.

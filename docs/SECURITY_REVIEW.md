@@ -1,62 +1,64 @@
 # Security Review
 
-This document describes the security boundary of the deployed Battery Passport Mainnet MVP. It is not an external audit report.
+This document describes the security boundary of the Battery Passport Mainnet MVP. It is not an external audit report.
 
 ## Contract controls
 
-- admin authority is stored on-chain and can be transferred;
-- operational roles can be granted/revoked only through authorized admin actions;
-- create_passport requires the manufacturer role;
-- dd_inspection requires the inspector role;
-- erify_passport requires the verifier role and valid inspection state;
-- lag_recall requires recall authority;
-- ownership transfer requires the current owner;
-- recycling requires the owner/recycler lifecycle approval flow;
-- recycler authorization is checked by contract logic;
-- recycled batteries cannot re-enter normal lifecycle write paths;
-- recall and verification state transitions are constrained;
-- a new inspection can invalidate the previous verification state.
+Admin authority is stored on-chain and can be transferred.
 
-## Input/state validation
+Operational roles are managed through authorized admin actions.
 
-The contract tests cover invalid metadata, score bounds, unauthorized role actions, ownership failures, duplicate approvals, recycling authorization, recall behavior, verification requirements and TTL helper bounds.
+create_passport requires the manufacturer role.
+
+add_inspection requires the inspector role.
+
+verify_passport requires the verifier role and valid inspection state.
+
+flag_recall requires recall authority.
+
+Ownership transfer requires the current owner.
+
+Recycling requires the owner and recycler lifecycle approval flow.
+
+Recycler authorization is enforced by contract logic.
+
+Recycled batteries cannot return to normal lifecycle write paths.
+
+A new inspection can invalidate previous verification state.
 
 ## Frontend controls
 
-- no private key or recovery phrase is requested;
-- Freighter signs state-changing transactions;
-- Freighter network is checked before write submission;
-- read-only calls are simulated and do not request a user signature;
-- transaction submission is followed by final-status polling;
-- raw contract errors are mapped to user-facing messages;
-- production contract ID, RPC URL, network and read account are public values.
+No private key or recovery phrase is requested.
+
+Freighter signs state-changing transactions.
+
+The wallet network is checked before write submission.
+
+Read-only contract calls do not request a user signature.
+
+Production network identifiers are public configuration values.
 
 ## Production code identity
 
-`	ext
-Contract:
-CB2SENPKHCYERH3WF3ILL7Q3RGFPDBYOC4WC4WSMNZUOU6KTXOX5PVQ5
+    Contract: CB2SENPKHCYERH3WF3ILL7Q3RGFPDBYOC4WC4WSMNZUOU6KTXOX5PVQ5
+    WASM SHA-256: 0e7f3ce1012e76b877ef021c2d8de5aef0303a509aa3138dfab4f8ae60347663
 
-WASM SHA-256:
-0e7f3ce1012e76b877ef021c2d8de5aef0303a509aa3138dfab4f8ae60347663
-`
-
-The release gate fails if the local contract build stops matching the deployed Mainnet WASM.
+The release gate must fail if the verified production identity changes unexpectedly.
 
 ## Public data
 
-Battery serials, lifecycle metadata, public wallet addresses, health scores, audit information and state changes stored on Stellar are public blockchain data.
+Battery serials, lifecycle metadata, wallet addresses, health scores and audit history stored on Stellar are public blockchain data.
 
-Do not put confidential personal or commercial information in fields intended for on-chain storage.
+Do not store confidential personal or commercial information on-chain.
 
 ## State lifetime
 
-Persistent contract state is subject to Stellar state archival/TTL behavior.
+Persistent Soroban state is subject to state archival and TTL behavior.
 
-The repository includes bounded Mainnet maintenance helpers for passport/audit state and role state. Operators must monitor long-lived production records and restore archived state when necessary.
+The project includes bounded maintenance helpers for passport, audit and role state.
 
 ## Admin operations
 
-Admin authority controls role assignment and is security-sensitive. Use an appropriately secured operational account/policy and keep signing material outside this repository.
+Admin authority is security-sensitive. Signing material must remain outside this repository.
 
-The current admin is not asserted in this document because it was not independently verified as part of this sync.
+The current admin is not asserted because it has not been independently verified during this release sync.
